@@ -40,7 +40,6 @@ wx.onTouchMove(function (res) {
         datas[key]['select_status'] = 1;
         datas[key]['color'] = move_div.color;
         
-        console.log(datas[key]);
       } else {
         
         datas[key]['select_status'] = 0;
@@ -72,7 +71,6 @@ wx.onTouchStart(function (res) {
 //触摸结束的时间
 wx.onTouchEnd(function (result) {
   move_div.select_status = 0;
-  console.log(datas);
   for(var key in datas){
     //判断哪个被选中
     if(datas[key].select_status == 1 && datas[key].lock == 0){
@@ -88,12 +86,13 @@ wx.onTouchEnd(function (result) {
       move_div.x = move_div.original_x;
       move_div.y = move_div.original_y;
       move_div.int = getRandomInt(1, 9);
-      draw_status = true;
-      //重新繪製
-      draw();
-      draw_status = false;
     }
   }
+  draw_status = true;
+  get_complete_datas();
+  //重新繪製
+  draw();
+  draw_status = false;
 
 })
 
@@ -104,10 +103,6 @@ function getRandomInt(min, max) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
 }
-console.log(getRandomInt(10, 240));
-console.log(getRandomInt(10, 240));
-console.log(getRandomInt(10, 240));
-console.log(getRandomInt(10, 240));
 //随机生成一个新的颜色
 function random_generate_new_color()
 {
@@ -120,7 +115,6 @@ wx.onTouchMove(function (result) {
   if(draw_status == true){
     return false;
   }
-  console.log(move_div);
   if (move_div.select_status == 1) {
     let NewTouchX = result.changedTouches[0].clientX // 重新判断当前触摸点x坐标
     let NewTouchY = result.changedTouches[0].clientY // 重新判断当前触摸点x坐标
@@ -145,16 +139,18 @@ function load_draw()
 
       let _Draw = new Draw(ctx, c);
       _Draw.draw((min_x[line_i] + (column_i * container_r * 2)), (min_y + (line_i * container_r * 2)), 6, container_r, 'rgba(45,95,0,1)');
-      console.log(line_i, column_i);
+
       c++;
       const data = {
+        lock: 0,
         min_x: (min_x[line_i] + (column_i * container_r * 2)) - container_r / 2,
         max_x: (min_x[line_i] + (column_i * container_r * 2)) + container_r / 2,
         min_y: (min_y + (line_i * container_r * 2)) - container_r / 2,
         max_y: (min_y + (line_i * container_r * 2)) + container_r / 2,
         select_status: 0,
         color: 'rgba(45,95,0,1)',
-        lock: 0
+        line_i: line_i,
+        column_i: column_i
       };
 
       datas.push(data);
@@ -193,4 +189,47 @@ function draw()
   _Draw.draw_new(move_div.x, move_div.y, 6, container_r, move_div.color, move_div.int);
 }
 
+//判断是否完成拼接
+function get_complete_datas()
+{
+  var remove_hexagons = [];
+  for(var key in datas){
+    //对已经放置了的多边形进行下一步判断
+    if(datas[key].lock == 1){
+      let current_adjacent_hexagon = datas[key];
+      
+      var adjacent_hexagons = new Array();
+      adjacent_hexagons.push(current_adjacent_hexagon);
+      for(var son_key in datas){
+        
+        //将当前元素排除
+        if (current_adjacent_hexagon.line_i == datas[son_key].line_i && current_adjacent_hexagon.column_i == datas[son_key].column_i){
+          continue;
+        }
+
+        //找出相邻的六边形
+        if (datas[son_key].lock == 1 && Math.abs(datas[son_key].line_i - current_adjacent_hexagon.line_i) <= 1 && Math.abs(datas[son_key].column_i - current_adjacent_hexagon.column_i) <= 1){
+          adjacent_hexagons.push(datas[son_key]);
+        }
+      } 
+      if (adjacent_hexagons.length >= 3){
+        remove_hexagons.push(adjacent_hexagons);
+      }
+      
+    }
+  }
+  console.log(remove_hexagons);
+  for(var r_key in remove_hexagons){
+    for (var r_son_key in remove_hexagons[r_key]) {
+      for (var r_son_son_key in datas) {
+        if (remove_hexagons[r_key][r_son_key].line_i == datas[r_son_son_key].line_i && remove_hexagons[r_key][r_son_key].column_i == datas[r_son_son_key].column_i) {
+          console.log(r_son_son_key);
+          datas[r_son_son_key].lock = 0;
+          datas[r_son_son_key].color = 'rgba(45,95,0,1)';
+        }
+      }
+    }
+  }
+  console.log(datas);
+}
 
